@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Habits" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Habits</title>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="date" id="date"></div>
+      <h1 class="title">今日の習慣</h1>
+      <div class="progress">
+        <div class="progress-text">
+          <span id="progressCount">0</span><span class="progress-divider">/</span><span id="progressTotal">0</span>
+          <span class="progress-label">達成</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      </div>
+    </header>
+
+    <section class="habits" id="habits"></section>
+
+    <div class="empty" id="empty" hidden>
+      <div class="empty-icon">✦</div>
+      <p class="empty-text">習慣をはじめよう</p>
+      <p class="empty-sub">下のボタンから追加できます</p>
+    </div>
+
+    <div class="spacer"></div>
+  </main>
+
+  <button class="fab" id="fabAdd" aria-label="習慣を追加">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+  </button>
+
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+  <div class="sheet" id="sheet" aria-hidden="true">
+    <div class="sheet-handle-wrap" id="sheetHandle">
+      <div class="sheet-handle"></div>
+    </div>
+    <h2 class="sheet-title">新しい習慣</h2>
+    <div class="emoji-picker" id="emojiPicker">
+      <button type="button" class="emoji-option" data-emoji="✦">✦</button>
+      <button type="button" class="emoji-option" data-emoji="◐">◐</button>
+      <button type="button" class="emoji-option" data-emoji="☾">☾</button>
+      <button type="button" class="emoji-option" data-emoji="❍">❍</button>
+      <button type="button" class="emoji-option" data-emoji="✕">✕</button>
+      <button type="button" class="emoji-option" data-emoji="✚">✚</button>
+      <button type="button" class="emoji-option" data-emoji="△">△</button>
+      <button type="button" class="emoji-option" data-emoji="▢">▢</button>
+    </div>
+    <input
+      type="text"
+      class="sheet-input"
+      id="habitInput"
+      placeholder="例: 瞑想 5分"
+      maxlength="40"
+      autocomplete="off"
+    />
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="cancelBtn">キャンセル</button>
+      <button class="btn btn-primary" id="addBtn">追加する</button>
+    </div>
+  </div>
+
+  <div class="confirm-backdrop" id="confirmBackdrop"></div>
+  <div class="confirm" id="confirm">
+    <p class="confirm-text" id="confirmText">この習慣を削除しますか？</p>
+    <p class="confirm-sub">記録もすべて消えます</p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" id="confirmCancel">キャンセル</button>
+      <button class="btn btn-danger" id="confirmOk">削除</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
