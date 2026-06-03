@@ -7,10 +7,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Habits" />
-  <link rel="manifest" href="manifest.json" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <link rel="manifest" href="manifest.json?v=3" />
   <link rel="apple-touch-icon" href="icon.svg" />
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=3" />
   <title>Habits</title>
 </head>
 <body>
@@ -125,6 +128,7 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <div class="version-tag" id="versionTag">v3</div>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
