@@ -10,10 +10,10 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="manifest" href="manifest.json?v=3" />
+  <link rel="manifest" href="manifest.json?v=4" />
   <link rel="apple-touch-icon" href="icon.svg" />
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=4" />
   <title>Habits</title>
 </head>
 <body>
@@ -86,6 +86,12 @@
     <div class="detail-header">
       <div class="detail-emoji" id="detailEmoji">✦</div>
       <h2 class="detail-title" id="detailTitle">習慣名</h2>
+      <button class="edit-btn" id="editBtn" aria-label="編集">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"></path>
+          <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+        </svg>
+      </button>
     </div>
     <div class="stats-grid">
       <div class="stat-card">
@@ -105,6 +111,8 @@
         <div class="stat-label">達成率</div>
       </div>
     </div>
+    <div class="section-label">バッジ</div>
+    <div class="milestones" id="milestones"></div>
     <div class="month-nav">
       <button class="month-btn" id="prevMonth" aria-label="前の月">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -115,6 +123,11 @@
       </button>
     </div>
     <div class="month-grid" id="monthGrid"></div>
+    <div class="section-label">過去1年</div>
+    <div class="year-scroll">
+      <div class="year-months" id="yearMonths"></div>
+      <div class="year-grid" id="yearGrid"></div>
+    </div>
     <button class="btn btn-ghost detail-close" id="detailClose">閉じる</button>
   </div>
 
@@ -128,7 +141,9 @@
     </div>
   </div>
 
-  <div class="version-tag" id="versionTag">v3</div>
-  <script src="app.js?v=3"></script>
+  <div class="toast" id="toast" aria-live="polite"></div>
+
+  <div class="version-tag" id="versionTag">v4</div>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

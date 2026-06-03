@@ -4,6 +4,7 @@
   const STORAGE_KEY = 'habits-app-v1';
   const DEFAULT_EMOJI = '✦';
   const WEEK_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
+  const MILESTONES = [3, 7, 14, 30, 60, 100, 365];
 
   const $ = (id) => document.getElementById(id);
 
@@ -28,9 +29,10 @@
     confirmOk: $('confirmOk'),
   };
 
-  let state = { habits: [], completions: {} };
+  let state = { habits: [], completions: {}, milestones: {} };
   let selectedEmoji = DEFAULT_EMOJI;
   let pendingDeleteId = null;
+  let editingId = null;
 
   // ---------- Date helpers ----------
   const toKey = (d) => {
@@ -66,7 +68,11 @@
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.habits) && parsed.completions) {
-          state = parsed;
+          state = {
+            habits: parsed.habits,
+            completions: parsed.completions,
+            milestones: parsed.milestones || {},
+          };
         }
       }
     } catch {
@@ -84,12 +90,27 @@
 
   const toggleDone = (habitId, dateKey) => {
     if (!state.completions[habitId]) state.completions[habitId] = {};
+    let justCompleted = false;
     if (state.completions[habitId][dateKey]) {
       delete state.completions[habitId][dateKey];
     } else {
       state.completions[habitId][dateKey] = true;
+      justCompleted = true;
     }
     save();
+    if (justCompleted) maybeCelebrateMilestone(habitId);
+  };
+
+  const maybeCelebrateMilestone = (habitId) => {
+    const longest = getLongestStreak(habitId);
+    const already = state.milestones[habitId] || [];
+    const newlyReached = MILESTONES.filter(
+      (m) => longest >= m && !already.includes(m)
+    );
+    if (newlyReached.length === 0) return;
+    state.milestones[habitId] = [...already, ...newlyReached];
+    save();
+    showMilestoneToast(habitId, newlyReached[newlyReached.length - 1]);
   };
 
   const getLongestStreak = (habitId) => {
@@ -248,11 +269,33 @@
       "'": '&#39;',
     }[c]));
 
-  // ---------- Sheet ----------
+  // ---------- Sheet (add / edit) ----------
+  const sheetTitleEl = () => document.querySelector('#sheet .sheet-title');
+
   const openSheet = () => {
+    editingId = null;
     selectedEmoji = DEFAULT_EMOJI;
     updateEmojiSelection();
     els.habitInput.value = '';
+    sheetTitleEl().textContent = '新しい習慣';
+    els.addBtn.textContent = '追加する';
+    els.sheet.classList.add('open');
+    els.sheetBackdrop.classList.add('open');
+    els.sheet.setAttribute('aria-hidden', 'false');
+    setTimeout(() => els.habitInput.focus(), 300);
+    updateAddDisabled();
+  };
+
+  const openEditSheet = (habitId) => {
+    const habit = state.habits.find((h) => h.id === habitId);
+    if (!habit) return;
+    closeDetail();
+    editingId = habitId;
+    selectedEmoji = habit.emoji || DEFAULT_EMOJI;
+    updateEmojiSelection();
+    els.habitInput.value = habit.name;
+    sheetTitleEl().textContent = '習慣を編集';
+    els.addBtn.textContent = '保存';
     els.sheet.classList.add('open');
     els.sheetBackdrop.classList.add('open');
     els.sheet.setAttribute('aria-hidden', 'false');
@@ -265,6 +308,7 @@
     els.sheetBackdrop.classList.remove('open');
     els.sheet.setAttribute('aria-hidden', 'true');
     els.habitInput.blur();
+    editingId = null;
   };
 
   const updateEmojiSelection = () => {
@@ -281,14 +325,22 @@
   const addHabit = () => {
     const name = els.habitInput.value.trim();
     if (!name) return;
-    const id =
-      Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    state.habits.push({
-      id,
-      name,
-      emoji: selectedEmoji,
-      createdAt: new Date().toISOString(),
-    });
+    if (editingId) {
+      const habit = state.habits.find((h) => h.id === editingId);
+      if (habit) {
+        habit.name = name;
+        habit.emoji = selectedEmoji;
+      }
+    } else {
+      const id =
+        Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      state.habits.push({
+        id,
+        name,
+        emoji: selectedEmoji,
+        createdAt: new Date().toISOString(),
+      });
+    }
     save();
     closeSheet();
     render();
@@ -304,14 +356,18 @@
     handle: document.getElementById('detailHandle'),
     emoji: document.getElementById('detailEmoji'),
     title: document.getElementById('detailTitle'),
+    editBtn: document.getElementById('editBtn'),
     statStreak: document.getElementById('statStreak'),
     statLongest: document.getElementById('statLongest'),
     statTotal: document.getElementById('statTotal'),
     statRate: document.getElementById('statRate'),
+    milestones: document.getElementById('milestones'),
     monthLabel: document.getElementById('monthLabel'),
     monthGrid: document.getElementById('monthGrid'),
     prevMonth: document.getElementById('prevMonth'),
     nextMonth: document.getElementById('nextMonth'),
+    yearGrid: document.getElementById('yearGrid'),
+    yearMonths: document.getElementById('yearMonths'),
     closeBtn: document.getElementById('detailClose'),
   };
 
@@ -382,6 +438,82 @@
     }
 
     detailEls.monthGrid.innerHTML = cellsHtml;
+
+    renderMilestones(h.id);
+    renderYearGrid(h.id);
+  };
+
+  const renderMilestones = (habitId) => {
+    const longest = getLongestStreak(habitId);
+    const html = MILESTONES.map((m) => {
+      const reached = longest >= m;
+      return `
+        <div class="milestone ${reached ? 'reached' : ''}">
+          <div class="milestone-num">${m}</div>
+          <div class="milestone-label">日</div>
+        </div>
+      `;
+    }).join('');
+    detailEls.milestones.innerHTML = html;
+  };
+
+  const renderYearGrid = (habitId) => {
+    const t = today();
+    // Start from the Sunday 51 weeks before this week's Sunday
+    const thisSun = new Date(t);
+    thisSun.setDate(t.getDate() - t.getDay());
+    const start = new Date(thisSun);
+    start.setDate(thisSun.getDate() - 51 * 7);
+
+    // 52 weeks × 7 days = 364 cells (close to a year)
+    let cellsHtml = '';
+    let monthsHtml = '';
+    let lastMonth = -1;
+    for (let w = 0; w < 52; w += 1) {
+      // For month label, look at the first day of this week
+      const firstOfWeek = new Date(start);
+      firstOfWeek.setDate(start.getDate() + w * 7);
+      const month = firstOfWeek.getMonth();
+      const showLabel = month !== lastMonth && firstOfWeek.getDate() <= 7;
+      monthsHtml += `<div class="year-month-label">${
+        showLabel ? `${month + 1}月` : ''
+      }</div>`;
+      if (showLabel) lastMonth = month;
+
+      for (let d = 0; d < 7; d += 1) {
+        const date = new Date(start);
+        date.setDate(start.getDate() + w * 7 + d);
+        if (date > t) {
+          cellsHtml += `<div class="year-cell future" style="grid-column:${w + 1};grid-row:${d + 1}"></div>`;
+        } else {
+          const done = isDone(habitId, toKey(date));
+          const todayCls = toKey(date) === toKey(t) ? ' today' : '';
+          cellsHtml += `<div class="year-cell${done ? ' done' : ''}${todayCls}" style="grid-column:${w + 1};grid-row:${d + 1}" data-key="${toKey(date)}" title="${toKey(date)}"></div>`;
+        }
+      }
+    }
+    detailEls.yearGrid.innerHTML = cellsHtml;
+    detailEls.yearMonths.innerHTML = monthsHtml;
+  };
+
+  // ---------- Milestone toast ----------
+  const showMilestoneToast = (habitId, milestone) => {
+    const habit = state.habits.find((h) => h.id === habitId);
+    if (!habit) return;
+    const toast = document.getElementById('toast');
+    toast.innerHTML = `
+      <div class="toast-emoji">${escapeHtml(habit.emoji || DEFAULT_EMOJI)}</div>
+      <div class="toast-content">
+        <div class="toast-num">${milestone}日連続 達成 ✦</div>
+        <div class="toast-sub">${escapeHtml(habit.name)}</div>
+      </div>
+    `;
+    toast.classList.remove('show');
+    void toast.offsetWidth;
+    toast.classList.add('show');
+    if (navigator.vibrate) navigator.vibrate([20, 60, 30, 60, 30]);
+    clearTimeout(showMilestoneToast._t);
+    showMilestoneToast._t = setTimeout(() => toast.classList.remove('show'), 3800);
   };
 
   const changeMonth = (delta) => {
@@ -608,6 +740,9 @@
   detailEls.backdrop.addEventListener('click', closeDetail);
   detailEls.prevMonth.addEventListener('click', () => changeMonth(-1));
   detailEls.nextMonth.addEventListener('click', () => changeMonth(1));
+  detailEls.editBtn.addEventListener('click', () => {
+    if (detailHabitId) openEditSheet(detailHabitId);
+  });
 
   detailEls.monthGrid.addEventListener('click', (e) => {
     const cell = e.target.closest('.month-day');
