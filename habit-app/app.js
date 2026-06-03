@@ -92,6 +92,43 @@
     save();
   };
 
+  const getLongestStreak = (habitId) => {
+    const dates = Object.keys(state.completions[habitId] || {}).sort();
+    if (dates.length === 0) return 0;
+    let max = 1;
+    let cur = 1;
+    for (let i = 1; i < dates.length; i += 1) {
+      const prev = new Date(dates[i - 1]);
+      const curr = new Date(dates[i]);
+      const diff = Math.round((curr - prev) / 86400000);
+      if (diff === 1) {
+        cur += 1;
+        if (cur > max) max = cur;
+      } else if (diff > 1) {
+        cur = 1;
+      }
+    }
+    return max;
+  };
+
+  const getTotalDays = (habitId) =>
+    Object.keys(state.completions[habitId] || {}).length;
+
+  const getRecentRate = (habitId) => {
+    const habit = state.habits.find((h) => h.id === habitId);
+    if (!habit) return 0;
+    const created = new Date(habit.createdAt);
+    created.setHours(0, 0, 0, 0);
+    const t = today();
+    const days = Math.floor((t - created) / 86400000) + 1;
+    const window = Math.min(30, Math.max(1, days));
+    let count = 0;
+    for (let i = 0; i < window; i += 1) {
+      if (isDone(habitId, toKey(addDays(t, -i)))) count += 1;
+    }
+    return Math.round((count / window) * 100);
+  };
+
   const getStreak = (habitId) => {
     const t = today();
     const todayKey = toKey(t);
@@ -150,10 +187,23 @@
       .map((h, idx) => {
         const completed = isDone(h.id, todayKey);
         const streak = getStreak(h.id);
-        const streakHtml =
-          streak > 0
-            ? `<span class="streak-flame">●</span><span class="streak-count">${streak}日連続</span>`
-            : `<span class="streak-zero">記録なし</span>`;
+        const longest = getLongestStreak(h.id);
+        const totalDays = getTotalDays(h.id);
+        const rate = getRecentRate(h.id);
+        const hasAnyRecord = totalDays > 0;
+
+        const metaHtml = hasAnyRecord
+          ? `
+              <span class="meta-item meta-streak"><span class="streak-flame">●</span>${streak}</span>
+              <span class="meta-sep">·</span>
+              <span class="meta-item">最長 <b>${longest}</b></span>
+              <span class="meta-sep">·</span>
+              <span class="meta-item">累計 <b>${totalDays}</b></span>
+              <span class="meta-sep">·</span>
+              <span class="meta-item"><b>${rate}</b>%</span>
+            `
+          : `<span class="streak-zero">記録なし</span>`;
+
         const weekHtml = week
           .map((d) => {
             const cls = [
@@ -175,13 +225,13 @@
                 <div class="habit-emoji">${escapeHtml(h.emoji || DEFAULT_EMOJI)}</div>
                 <div class="habit-name-wrap">
                   <div class="habit-name">${escapeHtml(h.name)}</div>
-                  <div class="habit-meta">${streakHtml}</div>
+                  <div class="habit-meta">${metaHtml}</div>
                 </div>
               </div>
               <button class="check" data-action="toggle" aria-label="完了切替">
                 <svg viewBox="0 0 24 24"><polyline points="4 12 10 18 20 6"></polyline></svg>
               </button>
-              <div class="week-row">${weekHtml}</div>
+              <button class="week-row" data-action="detail" aria-label="詳細を見る">${weekHtml}</button>
             </article>
           </div>
         `;
@@ -242,6 +292,109 @@
     save();
     closeSheet();
     render();
+  };
+
+  // ---------- Detail sheet (stats + monthly calendar) ----------
+  let detailHabitId = null;
+  let detailMonth = null; // { year, month } (0-indexed month)
+
+  const detailEls = {
+    sheet: document.getElementById('detailSheet'),
+    backdrop: document.getElementById('detailBackdrop'),
+    handle: document.getElementById('detailHandle'),
+    emoji: document.getElementById('detailEmoji'),
+    title: document.getElementById('detailTitle'),
+    statStreak: document.getElementById('statStreak'),
+    statLongest: document.getElementById('statLongest'),
+    statTotal: document.getElementById('statTotal'),
+    statRate: document.getElementById('statRate'),
+    monthLabel: document.getElementById('monthLabel'),
+    monthGrid: document.getElementById('monthGrid'),
+    prevMonth: document.getElementById('prevMonth'),
+    nextMonth: document.getElementById('nextMonth'),
+    closeBtn: document.getElementById('detailClose'),
+  };
+
+  const openDetail = (habitId) => {
+    detailHabitId = habitId;
+    const t = today();
+    detailMonth = { year: t.getFullYear(), month: t.getMonth() };
+    renderDetail();
+    detailEls.sheet.classList.add('open');
+    detailEls.backdrop.classList.add('open');
+  };
+
+  const closeDetail = () => {
+    detailEls.sheet.classList.remove('open');
+    detailEls.backdrop.classList.remove('open');
+    detailHabitId = null;
+  };
+
+  const renderDetail = () => {
+    if (!detailHabitId) return;
+    const h = state.habits.find((x) => x.id === detailHabitId);
+    if (!h) return closeDetail();
+
+    detailEls.emoji.textContent = h.emoji || DEFAULT_EMOJI;
+    detailEls.title.textContent = h.name;
+
+    detailEls.statStreak.textContent = getStreak(h.id);
+    detailEls.statLongest.textContent = getLongestStreak(h.id);
+    detailEls.statTotal.textContent = getTotalDays(h.id);
+    detailEls.statRate.textContent = `${getRecentRate(h.id)}%`;
+
+    const { year, month } = detailMonth;
+    detailEls.monthLabel.textContent = `${year}年${month + 1}月`;
+
+    // Disable next button if showing current month or future
+    const now = today();
+    const isCurrentMonth =
+      year === now.getFullYear() && month === now.getMonth();
+    detailEls.nextMonth.disabled = isCurrentMonth;
+
+    const first = new Date(year, month, 1);
+    const startDay = first.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayKey = toKey(now);
+
+    let cellsHtml = WEEK_LABELS.map(
+      (l) => `<div class="month-head">${l}</div>`
+    ).join('');
+
+    for (let i = 0; i < startDay; i += 1) {
+      cellsHtml += `<div class="month-day empty"></div>`;
+    }
+    for (let d = 1; d <= daysInMonth; d += 1) {
+      const date = new Date(year, month, d);
+      const key = toKey(date);
+      const done = isDone(h.id, key);
+      const isToday = key === todayKey;
+      const isFuture = date > now;
+      const cls = [
+        'month-day',
+        done ? 'done' : '',
+        isToday ? 'today' : '',
+        isFuture ? 'future' : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
+      cellsHtml += `<div class="${cls}" data-key="${key}"><span>${d}</span></div>`;
+    }
+
+    detailEls.monthGrid.innerHTML = cellsHtml;
+  };
+
+  const changeMonth = (delta) => {
+    if (!detailMonth) return;
+    const d = new Date(detailMonth.year, detailMonth.month + delta, 1);
+    const now = today();
+    if (
+      d.getFullYear() > now.getFullYear() ||
+      (d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth())
+    )
+      return;
+    detailMonth = { year: d.getFullYear(), month: d.getMonth() };
+    renderDetail();
   };
 
   // ---------- Confirm ----------
@@ -388,7 +541,13 @@
       return;
     }
 
-    // Toggle done on row tap (anywhere on the card)
+    // Tap on week-row (7-day preview) opens detail view
+    if (e.target.closest('[data-action="detail"]')) {
+      openDetail(id);
+      return;
+    }
+
+    // Toggle done on row tap (anywhere else on the card)
     const checkEl = row.querySelector('.check');
     toggleDone(id, toKey(today()));
     checkEl?.classList.add('pulsing');
@@ -444,10 +603,66 @@
     window.addEventListener('mouseup', onUp);
   });
 
+  // ---------- Detail sheet wiring ----------
+  detailEls.closeBtn.addEventListener('click', closeDetail);
+  detailEls.backdrop.addEventListener('click', closeDetail);
+  detailEls.prevMonth.addEventListener('click', () => changeMonth(-1));
+  detailEls.nextMonth.addEventListener('click', () => changeMonth(1));
+
+  detailEls.monthGrid.addEventListener('click', (e) => {
+    const cell = e.target.closest('.month-day');
+    if (!cell || cell.classList.contains('empty') || cell.classList.contains('future')) return;
+    const key = cell.dataset.key;
+    if (!key || !detailHabitId) return;
+    toggleDone(detailHabitId, key);
+    renderDetail();
+    render();
+    if (navigator.vibrate) navigator.vibrate(6);
+  });
+
+  // Drag-to-dismiss for detail sheet
+  let detailDrag = null;
+  const onDetailDragStart = (e) => {
+    const t = e.touches ? e.touches[0] : e;
+    detailDrag = { startY: t.clientY, dy: 0 };
+    detailEls.sheet.classList.add('dragging');
+  };
+  const onDetailDragMove = (e) => {
+    if (!detailDrag) return;
+    const t = e.touches ? e.touches[0] : e;
+    let dy = t.clientY - detailDrag.startY;
+    if (dy < 0) dy = dy * 0.25;
+    detailDrag.dy = dy;
+    detailEls.sheet.style.transform = `translateY(${dy}px)`;
+  };
+  const onDetailDragEnd = () => {
+    if (!detailDrag) return;
+    detailEls.sheet.classList.remove('dragging');
+    detailEls.sheet.style.transform = '';
+    if (detailDrag.dy > 80) closeDetail();
+    detailDrag = null;
+  };
+  detailEls.handle.addEventListener('touchstart', onDetailDragStart, { passive: true });
+  detailEls.handle.addEventListener('touchmove', onDetailDragMove, { passive: true });
+  detailEls.handle.addEventListener('touchend', onDetailDragEnd);
+  detailEls.handle.addEventListener('touchcancel', onDetailDragEnd);
+  detailEls.handle.addEventListener('mousedown', (e) => {
+    onDetailDragStart(e);
+    const onMove = (ev) => onDetailDragMove(ev);
+    const onUp = () => {
+      onDetailDragEnd();
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (els.sheet.classList.contains('open')) closeSheet();
       if (els.confirm.classList.contains('open')) closeConfirm();
+      if (detailEls.sheet.classList.contains('open')) closeDetail();
     }
   });
 
