@@ -10,16 +10,24 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="manifest" href="manifest.json?v=4" />
+  <link rel="manifest" href="manifest.json?v=5" />
   <link rel="apple-touch-icon" href="icon.svg" />
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <link rel="stylesheet" href="styles.css?v=5" />
   <title>Habits</title>
 </head>
 <body>
   <main class="app">
     <header class="header">
-      <div class="date" id="date"></div>
+      <div class="header-top">
+        <div class="date" id="date"></div>
+        <button class="settings-btn" id="settingsBtn" aria-label="設定">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
       <h1 class="title">今日の習慣</h1>
       <div class="progress">
         <div class="progress-text">
@@ -141,9 +149,29 @@
     </div>
   </div>
 
+  <div class="sheet-backdrop" id="settingsBackdrop"></div>
+  <div class="sheet settings-sheet" id="settingsSheet" aria-hidden="true">
+    <div class="sheet-handle-wrap" id="settingsHandle">
+      <div class="sheet-handle"></div>
+    </div>
+    <h2 class="sheet-title">設定</h2>
+    <div class="settings-section">
+      <div class="settings-section-title">データのバックアップ</div>
+      <p class="settings-desc">習慣と記録をJSONファイルで保存できます。iCloud Driveに入れておけば、機種変更や再インストール時に復元できます。</p>
+      <button class="btn btn-ghost btn-block" id="exportBtn">バックアップを保存</button>
+      <button class="btn btn-ghost btn-block" id="importBtn">バックアップから復元</button>
+      <input type="file" id="importInput" accept=".json,application/json" hidden />
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">統計</div>
+      <div class="settings-stats" id="settingsStats"></div>
+    </div>
+    <button class="btn btn-ghost btn-block settings-close" id="settingsClose">閉じる</button>
+  </div>
+
   <div class="toast" id="toast" aria-live="polite"></div>
 
-  <div class="version-tag" id="versionTag">v4</div>
-  <script src="app.js?v=4"></script>
+  <div class="version-tag" id="versionTag">v5</div>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

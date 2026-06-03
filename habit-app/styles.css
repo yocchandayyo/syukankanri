@@ -88,13 +88,36 @@ body.standalone .app {
   margin-bottom: 28px;
 }
 
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
 .date {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-3);
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  margin-bottom: 8px;
+}
+
+.settings-btn {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  transition: all 0.2s var(--ease);
+}
+
+.settings-btn:active {
+  transform: scale(0.93);
+  color: var(--text);
 }
 
 .title {
@@ -632,6 +655,60 @@ body.standalone .app {
 .btn-danger {
   background: var(--danger);
   color: var(--text);
+}
+
+.btn-block {
+  width: 100%;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.btn-block:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- Settings sheet ---------- */
+.settings-sheet {
+  padding-bottom: calc(var(--safe-bottom) + 20px);
+}
+
+.settings-section {
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.settings-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 10px;
+}
+
+.settings-desc {
+  font-size: 13px;
+  color: var(--text-2);
+  margin: 0 0 14px;
+  line-height: 1.55;
+  letter-spacing: -0.005em;
+}
+
+.settings-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.settings-stats .stat-card {
+  background: var(--surface-2);
+}
+
+.settings-close {
+  margin-top: 6px;
 }
 
 /* ---------- Confirm dialog ---------- */

@@ -346,6 +346,115 @@
     render();
   };
 
+  // ---------- Settings sheet (backup / restore) ----------
+  const settingsEls = {
+    btn: document.getElementById('settingsBtn'),
+    sheet: document.getElementById('settingsSheet'),
+    backdrop: document.getElementById('settingsBackdrop'),
+    handle: document.getElementById('settingsHandle'),
+    closeBtn: document.getElementById('settingsClose'),
+    exportBtn: document.getElementById('exportBtn'),
+    importBtn: document.getElementById('importBtn'),
+    importInput: document.getElementById('importInput'),
+    stats: document.getElementById('settingsStats'),
+  };
+
+  const openSettings = () => {
+    renderSettingsStats();
+    settingsEls.sheet.classList.add('open');
+    settingsEls.backdrop.classList.add('open');
+    settingsEls.sheet.setAttribute('aria-hidden', 'false');
+  };
+
+  const closeSettings = () => {
+    settingsEls.sheet.classList.remove('open');
+    settingsEls.backdrop.classList.remove('open');
+    settingsEls.sheet.setAttribute('aria-hidden', 'true');
+  };
+
+  const renderSettingsStats = () => {
+    const habitCount = state.habits.length;
+    const totalCompletions = Object.values(state.completions).reduce(
+      (acc, m) => acc + Object.keys(m).length,
+      0
+    );
+    settingsEls.stats.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-num">${habitCount}</div>
+        <div class="stat-label">習慣の数</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">${totalCompletions}</div>
+        <div class="stat-label">合計達成回数</div>
+      </div>
+    `;
+  };
+
+  const exportData = () => {
+    const payload = {
+      ...state,
+      exportedAt: new Date().toISOString(),
+      version: 'v5',
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const today = new Date().toISOString().slice(0, 10);
+    a.download = `habits-backup-${today}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showSimpleToast('バックアップを保存しました');
+  };
+
+  const importData = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (!parsed || !Array.isArray(parsed.habits) || !parsed.completions) {
+          throw new Error('Invalid file');
+        }
+        const habitsCount = parsed.habits.length;
+        const ok = window.confirm(
+          `${habitsCount}件の習慣を読み込みます。\n現在のデータは上書きされます。よろしいですか？`
+        );
+        if (!ok) return;
+        state = {
+          habits: parsed.habits,
+          completions: parsed.completions,
+          milestones: parsed.milestones || {},
+        };
+        save();
+        closeSettings();
+        render();
+        showSimpleToast('バックアップから復元しました');
+      } catch (err) {
+        window.alert('ファイルを読み込めませんでした。\nバックアップJSONファイルか確認してください。');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const showSimpleToast = (text) => {
+    const toast = document.getElementById('toast');
+    toast.innerHTML = `
+      <div class="toast-emoji">✓</div>
+      <div class="toast-content">
+        <div class="toast-num">${escapeHtml(text)}</div>
+      </div>
+    `;
+    toast.classList.remove('show');
+    void toast.offsetWidth;
+    toast.classList.add('show');
+    clearTimeout(showSimpleToast._t);
+    showSimpleToast._t = setTimeout(() => toast.classList.remove('show'), 2200);
+  };
+
   // ---------- Detail sheet (stats + monthly calendar) ----------
   let detailHabitId = null;
   let detailMonth = null; // { year, month } (0-indexed month)
@@ -735,6 +844,58 @@
     window.addEventListener('mouseup', onUp);
   });
 
+  // ---------- Settings sheet wiring ----------
+  settingsEls.btn.addEventListener('click', openSettings);
+  settingsEls.closeBtn.addEventListener('click', closeSettings);
+  settingsEls.backdrop.addEventListener('click', closeSettings);
+  settingsEls.exportBtn.addEventListener('click', exportData);
+  settingsEls.importBtn.addEventListener('click', () =>
+    settingsEls.importInput.click()
+  );
+  settingsEls.importInput.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) importData(file);
+    e.target.value = '';
+  });
+
+  // Drag-to-dismiss for settings sheet
+  let settingsDrag = null;
+  const onSettingsDragStart = (e) => {
+    const t = e.touches ? e.touches[0] : e;
+    settingsDrag = { startY: t.clientY, dy: 0 };
+    settingsEls.sheet.classList.add('dragging');
+  };
+  const onSettingsDragMove = (e) => {
+    if (!settingsDrag) return;
+    const t = e.touches ? e.touches[0] : e;
+    let dy = t.clientY - settingsDrag.startY;
+    if (dy < 0) dy = dy * 0.25;
+    settingsDrag.dy = dy;
+    settingsEls.sheet.style.transform = `translateY(${dy}px)`;
+  };
+  const onSettingsDragEnd = () => {
+    if (!settingsDrag) return;
+    settingsEls.sheet.classList.remove('dragging');
+    settingsEls.sheet.style.transform = '';
+    if (settingsDrag.dy > 80) closeSettings();
+    settingsDrag = null;
+  };
+  settingsEls.handle.addEventListener('touchstart', onSettingsDragStart, { passive: true });
+  settingsEls.handle.addEventListener('touchmove', onSettingsDragMove, { passive: true });
+  settingsEls.handle.addEventListener('touchend', onSettingsDragEnd);
+  settingsEls.handle.addEventListener('touchcancel', onSettingsDragEnd);
+  settingsEls.handle.addEventListener('mousedown', (e) => {
+    onSettingsDragStart(e);
+    const onMove = (ev) => onSettingsDragMove(ev);
+    const onUp = () => {
+      onSettingsDragEnd();
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
+
   // ---------- Detail sheet wiring ----------
   detailEls.closeBtn.addEventListener('click', closeDetail);
   detailEls.backdrop.addEventListener('click', closeDetail);
@@ -798,6 +959,7 @@
       if (els.sheet.classList.contains('open')) closeSheet();
       if (els.confirm.classList.contains('open')) closeConfirm();
       if (detailEls.sheet.classList.contains('open')) closeDetail();
+      if (settingsEls.sheet.classList.contains('open')) closeSettings();
     }
   });
 
